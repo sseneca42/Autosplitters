@@ -31,7 +31,7 @@ print("__STARTUP START__");
 	});
 	//
 	vars.createSetting("_subChapter", "Split At Each New Subchapter", "Arbitrary - Dialogues or new mechanics | Compatible with 'Individual Chapter Timer'", false);
-	vars.createSetting("_IC", "Individual Chapter Timer", "'Full Game Timer' by default | Be sure that 'Single Level Time' is off", false);
+	vars.createSetting("_IC", "Individual Chapter Timer", "'Full Game Timer' by default | Be sure that 'Single Level Timer' is off", false);
 	vars.createSetting("_IL", "Single Level Timer", "Useful for developing new strategies and determining exactly what is faster", false);
 	settings.CurrentDefaultParent = "_subChapter";
 		vars.createSetting("_zenMode", "Zen Mode", "", false);
@@ -63,7 +63,6 @@ print("__STARTUP START__");
 	};
 	vars.timeTmp = -1;
 	vars.levelTmp = -1;
-	vars.levelFinished = false;
 print("__STARTUP END__");
 }
 
@@ -99,8 +98,6 @@ print("__INIT END__");
 //
 update {
 	vars.watchers.UpdateAll(game);
-	if (vars.mode.Current != 3 && vars.mode.Old == 3)
-		vars.levelFinished = true;
 	if(settings["_IL"]) {
 		if(vars.fileTime.Current - vars.fileTime.Old > 1000000 || vars.fileTime.Current < vars.fileTime.Old) {
 			vars.timeTmp = vars.fileTime.Current/10000;
@@ -112,7 +109,7 @@ update {
 	else
 		timer.SetGameTime(TimeSpan.FromMilliseconds(settings["_IC"] ? vars.chapterTime.Current/10000 : vars.fileTime.Current/10000));
 //	if(vars.mode.Current != vars.mode.Old)
-//		print("Chapter = " + vars.chapter.Current + "\n" + "Level = " + vars.level.Current + "\n" + "Mode = " + vars.mode.Current);
+//		print("Chapter = " + vars.chapter.Current + "\nLevel = " + vars.level.Current + "\nMode = " + vars.mode.Current);
 }
 
 //
@@ -142,12 +139,11 @@ isLoading {
 
 //
 reset {
-	if (settings["_IC"])
-		return (settings["_autoReset"] && vars.mode.Old == 2 && vars.mode.Current == 4);
+	if (settings["_IC"] && settings["_autoReset"])
+		return (vars.mode.Old == 2 && vars.mode.Current == 4);
 	else if (settings["_IL"])
 		return (vars.mode.Current == 4);
-	else
-		return (vars.saveSlot.Current < vars.saveSlot.Old || vars.fileTime.Current < vars.fileTime.Old);
+	return (vars.saveSlot.Current < vars.saveSlot.Old || vars.fileTime.Current < vars.fileTime.Old);
 }
 
 //
@@ -168,10 +164,8 @@ split {
 				}
 		}
 	}
-	if (vars.levelFinished && vars.fileTime.Current == vars.fileTime.Old) {
-		vars.levelFinished = false;
-		return true;
-	}
+	if(settings["_IC"])
+		return((settings["_levelSplit"] && vars.level.Old < vars.level.Current) || vars.mode.Current == 3 && vars.mode.Old != 3);
 	else
-		return (settings["_IC"] && settings["_levelSplit"] && vars.level.Old < vars.level.Current);
+		return (vars.mode.Current != 3 && vars.mode.Old == 3);
 }
