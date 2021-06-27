@@ -185,7 +185,7 @@ split {
 		if (settings["_levelSplit"]) {
 			if (vars.level.Old < vars.level.Current)
 				return true;
-			return false;
+			return (vars.mode.Current == 3 && vars.mode.Old != 3);
 		}
 		if (vars.mode.Current == 3 && vars.mode.Old != 3)
 			return true;
