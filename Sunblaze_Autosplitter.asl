@@ -1,13 +1,14 @@
 //Download dbgview to see the comments.
 state("Sunblaze") {}
 
-//
 startup {
-print("__STARTUP START__");
+vars.print = (Action<dynamic>) ((output) => print("[Sunblaze ASL] " + output));
+vars.print("__STARTUP START__");
+	//
 	vars.timer = new TimerModel { CurrentState = timer };
 	//Look for a specific part of the game code, in this case a variable in a struct we are interested in. Easier to deal with than pointers for Unity games
 	vars.signatureScan = (Func<Process, string, int, string, IntPtr>)((process, name, offset, target) => {
-		print("____________\n" + name + " attempt\n____________");
+		vars.print("____________\n" + name + " attempt\n____________");
 		IntPtr ptr = IntPtr.Zero;
 		foreach (var page in process.MemoryPages())
 		{
@@ -17,7 +18,7 @@ print("__STARTUP START__");
 				ptr= scanner.Scan(new SigScanTarget(offset,target));
 			}
 			if (ptr != IntPtr.Zero) {
-				print("---------------------------------\n" + name + " address found at : 0x" + ptr.ToString("X8") + "\n---------------------------------");
+				vars.print("---------------------------------\n" + name + " address found at : 0x" + ptr.ToString("X8") + "\n---------------------------------");
 				break;
 			}
 		}
@@ -30,45 +31,78 @@ print("__STARTUP START__");
 		return true;
 	});
 	//
-	vars.createSetting("_subChapter", "Split At Each New Subchapter", "Arbitrary - Dialogues or new mechanics | Compatible with 'Individual Chapter Timer'", false);
-	vars.createSetting("_IC", "Individual Chapter Timer", "'Full Game Timer' by default | Be sure that 'Single Level Timer' is off", false);
-	vars.createSetting("_IL", "Single Level Timer", "Useful for developing new strategies and determining exactly what is faster", false);
-	settings.CurrentDefaultParent = "_subChapter";
-		vars.createSetting("_zenMode", "Zen Mode", "", false);
-	settings.CurrentDefaultParent = "_IC";
-		vars.createSetting("_levelSplit", "Split At Each New Level", "", true);
-		vars.createSetting("_autoReset", "Reset Automatically", "Do not reset finished runs", false);
-	settings.CurrentDefaultParent = "_IL";
-		vars.createSetting("_doubleLevel", "Double Level Timer", "Complete 2 levels instead of 1 to stop the timer | Useful for testing starts that include transition shenanigans", false);
+	vars.levelOn = (Func<string[], string, bool>)((sTest, str) => {
+		for (int i = 0; i < sTest.Length; ++i)
+			if (sTest[i] == str)
+				return true;
+		return false;
+	});
+	//
+	vars.buildOptions = (Func<int[], string, bool>)((numberLevel, optionName) => {
+		for (int chap = 0; chap < numberLevel.Length; ++chap)
+		{
+			string id, desc;
+			settings.CurrentDefaultParent = optionName;
+			id = "_ch" + (chap) + "" + optionName[1];
+			desc = chap == 6 ? "The Lost Levels" : "Chapter " + (chap + 1);
+			settings.Add(id, true, desc);
+			settings.CurrentDefaultParent = id;
+			for (int lvl = 0; lvl < numberLevel[chap]; ++lvl)
+			{
+				id = "_lvl" + (chap) + "-" + (lvl) + optionName[1];
+				desc = "Level " + (lvl + 1);
+				//vars.print("ID = " + id + "  " + vars.levelOn(vars.defaultSplits, id));
+				settings.Add(id, vars.levelOn(vars.defaultSplits, id), desc);
+				//settings.SetToolTip(id, "" + id);
+			}
+		}
+		return true;
+	});
+	//
+	vars.defaultSplits = new string[] {
+	"_lvl0-11n",
+	"_lvl1-17n","_lvl1-38n",
+	"_lvl2-8n","_lvl2-40n","_lvl2-57n",
+	"_lvl3-18n","_lvl3-40n","_lvl3-62n",
+	"_lvl4-21n","_lvl4-38n",
+	"_lvl5-12n","_lvl5-41n","_lvl5-59n",
+	"_lvl6-6n","_lvl6-14n","_lvl6-37n","_lvl6-51n","_lvl6-62n","_lvl6-90n","_lvl6-103n","_lvl6-119n",
+	"_lvl0-9z",
+	"_lvl1-16z",
+	"_lvl2-9z","_lvl2-19z",
+	"_lvl3-8z","_lvl3-15z","_lvl3-25z",
+	"_lvl4-6z","_lvl4-16z","_lvl4-22z",
+	"_lvl5-10z","_lvl5-22z","_lvl5-28z","_lvl5-33z"
+	};
 
-	vars.numberSplits = 22;
-	//Used to split when you reach a certain level in a certain chapter - {chapter, level, verif} - verif is used as a boolean to know if we already reached a level this run and prevent multiple splits from happening
-	vars.splits = new int[,] {
-		{0, 12, 1},
-		{1, 18, 1}, {1, 39, 1},
-		{2, 9, 1}, {2, 41, 1}, {2, 58, 1},
-		{3, 19, 1}, {3, 41, 1}, {3, 63, 1},
-		{4, 22, 1}, {4, 39, 1},
-		{5, 13, 1}, {5, 42, 1}, {5, 60, 1},
-		{6, 7, 1}, {6, 15, 1}, {6, 38, 1}, {6, 52, 1}, {6, 63, 1}, {6, 91, 1}, {6, 104, 1}, {6, 120, 1}
-	};
-	vars.numberSplitsZen = 14;
-	vars.splitsZen = new int[,] {
-		{0, 10, 1},
-		{1, 17, 1},
-		{2, 10, 1}, {2, 20, 1},
-		{3, 9, 1}, {3, 16, 1}, {3, 26, 1},
-		{4, 7, 1}, {4, 17, 1}, {4, 23, 1},
-		{5, 11, 1}, {5, 23, 1}, {5, 29, 1}, {5, 34, 1},
-	};
+	vars.createSetting("_IC", "Individual Chapter Timer", "The Full Game Timer is active by default", false);
+	vars.createSetting("_IL", "Individual Level Timer", "Useful for developing new strategies and determining exactly what is faster", false);
+	vars.createSetting("_splits", "Custom Splits", "Choose at the end of which level you want to split", false);
+	settings.CurrentDefaultParent = "_IC";
+		vars.createSetting("_levelSplit", "Split at each new level", "", true);
+		vars.createSetting("_autoReset", "Reset Automatically", "Reset when restarting the chapter, coming back to the menu or selecting a level through the menu\nDo not reset finished runs", true);
+	settings.CurrentDefaultParent = "_IL";
+		vars.createSetting("_doubleLevel", "Pause the timer after completing 2 levels", "Useful for testing transition strats", false);
+		vars.createSetting("_splitIL", "Split", "Split on top of pausing the timer\nUseful if you want to keep a trace of your best time", false);
+	settings.CurrentDefaultParent = "_splits";
+		vars.createSetting("_normalModeSplits", "Normal Mode Splits", "", true);
+		vars.createSetting("_hardModeSplits", "Hard Mode Splits", "", true);
+		vars.createSetting("_zenModeSplits", "Zen Mode Splits", "", true);
+
+	vars.numberLevelNormal = new int[] {39, 54, 67, 66, 68, 64, 126};
+	vars.numberLevelHard = new int[] {11, 11, 11, 11, 11, 11};
+	vars.numberLevelZen = new int[] {22, 28, 27, 29, 31, 38};
+	vars.buildOptions(vars.numberLevelNormal, "_normalModeSplits");
+	vars.buildOptions(vars.numberLevelHard, "_hardModeSplits");
+	vars.buildOptions(vars.numberLevelZen, "_zenModeSplits");
 	vars.timeTmp = -1;
 	vars.levelTmp = -1;
-print("__STARTUP END__");
+vars.print("__STARTUP END__");
 }
 
-//
+
 init {
-print("__INIT START__");
+vars.print("__INIT START__");
 	
 	IntPtr splitInfo = IntPtr.Zero;
 	while(splitInfo == IntPtr.Zero){
@@ -92,80 +126,73 @@ print("__INIT START__");
 		vars.fileTime, vars.chapterTime
 	};
 
-print("__INIT END__");
+vars.print("__INIT END__");
 }
 
-//
 update {
 	vars.watchers.UpdateAll(game);
-	if(settings["_IL"]) {
-		if(vars.fileTime.Current - vars.fileTime.Old > 1000000 || vars.fileTime.Current < vars.fileTime.Old) {
-			vars.timeTmp = vars.fileTime.Current/10000;
-			vars.levelTmp = vars.level.Current;
-		}
-		if ((settings["_doubleLevel"] && vars.levelTmp + 1 >= vars.level.Current) || (!settings["_doubleLevel"] && vars.levelTmp == vars.level.Current))
-			timer.SetGameTime(TimeSpan.FromMilliseconds(vars.fileTime.Current/10000 - vars.timeTmp));
-	}
-	else
-		timer.SetGameTime(TimeSpan.FromMilliseconds(settings["_IC"] ? vars.chapterTime.Current/10000 : vars.fileTime.Current/10000));
-//	if(vars.mode.Current != vars.mode.Old)
-//		print("Chapter = " + vars.chapter.Current + "\nLevel = " + vars.level.Current + "\nMode = " + vars.mode.Current);
+	//vars.print(vars.mode.Current + " " + vars.saveSlot.Current + " " + vars.chapter.Current+ " " + vars.level.Current+ " " + vars.timerIsRunning.Current+ " " + vars.fileTime.Current + " " + vars.chapterTime.Current);
+	//if(vars.mode.Current != vars.mode.Old || vars.timerIsRunning.Current != vars.timerIsRunning.Old) vars.print("Chapter = " + vars.chapter.Current + "\nLevel = " + vars.level.Current + "\nMode = " + vars.mode.Current + "\nTimerIsRunning = " + vars.timerIsRunning.Current + "\nFileTime = " + vars.fileTime.Current);
 }
 
-//
+
 start {
 	if (settings["_IL"] && vars.mode.Old <= 4 && vars.mode.Current == 1) {
+		if (vars.timeTmp == vars.fileTime.Current/10000)
+			return false;
 		vars.timeTmp = vars.fileTime.Current/10000;
 		vars.levelTmp = vars.level.Current;
 		return true;
 	}
-	else if (vars.mode.Old <= 4 && vars.mode.Current == 1 && vars.level.Current == 0) {
-		if (settings["_zenMode"]) {
-			for (int i = 0; i < vars.numberSplitsZen; i++)
-				vars.splitsZen[i, 2] = 1;
-		}
-		else {
-			for (int i = 0; i < vars.numberSplits; i++)
-				vars.splits[i, 2] = 1;
-		}
-		return true;
-	}
+	return (vars.mode.Old <= 4 && vars.mode.Current == 1 && vars.level.Current == 0);
 }
 
-//
+
 isLoading {
 	return true;
 }
 
-//
+
+gameTime {
+	if(settings["_IL"]) {
+	 	if (vars.levelTmp + (settings["_doubleLevel"] ? 1 : 0) >= vars.level.Current)
+			timer.SetGameTime(TimeSpan.FromMilliseconds(vars.fileTime.Current/10000 - vars.timeTmp));
+	}
+	else
+		timer.SetGameTime(TimeSpan.FromMilliseconds(settings["_IC"] ? vars.chapterTime.Current/10000 : vars.fileTime.Current/10000));
+}
+
+
 reset {
-	if (settings["_IC"] && settings["_autoReset"])
+	if (settings["_IL"] && vars.mode.Current == 4) {
+		vars.timeTmp = vars.fileTime.Current/10000;
+		return true;
+	}
+	else if (settings["_IC"] && settings["_autoReset"])
 		return (vars.mode.Old == 2 && vars.mode.Current == 4);
-	else if (settings["_IL"])
-		return (vars.mode.Current == 4);
 	return (vars.saveSlot.Current < vars.saveSlot.Old || vars.fileTime.Current < vars.fileTime.Old);
 }
 
-//
+
 split {
-	if(settings["_subChapter"]) {
-		if (settings["_zenMode"]) {
-			for (int i = 0; i < vars.numberSplitsZen; i++) 
-				if(vars.chapter.Current == vars.splitsZen[i, 0] && vars.level.Current == vars.splitsZen[i, 1] && vars.splitsZen[i, 2] == 1) {
-					vars.splitsZen[i, 2] = 0;
-					return true;
-				}
-		}
-		else {
-			for (int i = 0; i < vars.numberSplits; i++) 
-				if(vars.chapter.Current == vars.splits[i, 0] && vars.level.Current == vars.splits[i, 1] && vars.splits[i, 2] == 1) {
-					vars.splits[i, 2] = 0;
-					return true;
-				}
-		}
+	//if(vars.level.Old + 1 == vars.level.Current) vars.print("_lvl" + (vars.chapter.Current % 7) + "-" + vars.level.Old+(vars.saveSlot.Current == 4 ? "z" : vars.chapter.Current > 6 ? "h" : "n"));
+	if (settings["_IL"]) {
+		if (settings["_splitIL"])
+			return (vars.levelTmp + (settings["_doubleLevel"] ? 2 : 1) == vars.level.Current && vars.level.Current > vars.level.Old);
+		return false;
 	}
-	if(settings["_IC"])
-		return((settings["_levelSplit"] && vars.level.Old < vars.level.Current) || vars.mode.Current == 3 && vars.mode.Old != 3);
-	else
-		return (vars.mode.Current != 3 && vars.mode.Old == 3);
+	else if(settings["_IC"]){
+		if (settings["_levelSplit"]) {
+			if (vars.level.Old < vars.level.Current)
+				return true;
+			return false;
+		}
+		if (vars.mode.Current == 3 && vars.mode.Old != 3)
+			return true;
+	}
+	if(settings["_splits"] && vars.level.Old + 1 == vars.level.Current)
+		return (settings["_lvl" + (vars.chapter.Current % 7) + "-" + vars.level.Old + (vars.saveSlot.Current == 4 ? "z" : vars.chapter.Current > 6 ? "h" : "n")]);
+	return (vars.mode.Current == 3 && vars.timerIsRunning.Current != vars.timerIsRunning.Old);
 }
+//Bug :
+//If alt+tab and afk on end of chapter screen it can split again when coming back 
