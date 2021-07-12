@@ -144,7 +144,7 @@ start {
 		vars.levelTmp = vars.level.Current;
 		return true;
 	}
-	return (vars.mode.Old <= 4 && vars.mode.Current == 1 && vars.level.Current == 0 && vars.chapter.Current % 7 == 0);
+	return (vars.mode.Old <= 4 && vars.mode.Current == 1 && vars.level.Current == 0 && (settings["_IC"] || vars.chapter.Current % 7 == 0));
 }
 
 
