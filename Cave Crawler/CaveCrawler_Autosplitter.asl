@@ -97,11 +97,11 @@ update
 	if (!old.inLevel && !current.inLevel) {
 		if (vars.i >= 5)
 			vars.reset = true;
-		else if (vars.i <= -5) {
+		else if (vars.i <= -10) {
 			vars.i = 0;
 			vars.skip = true;
 		}
 		else if (settings["splitSkip"] && current.levelCompleted && !vars.skip)
-			vars.i--;
+			vars.i -= 2;
    }
 }
