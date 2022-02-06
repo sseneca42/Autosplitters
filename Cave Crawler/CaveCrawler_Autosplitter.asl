@@ -84,7 +84,7 @@ split
 		return true;
 	else if (settings["splitBoss"] && current.score == old.score + 2000)
 		return true;
-	else if (settings["splitSkip"] && !current.levelCompleted && old.levelCompleted && current.level != old.level && vars.skip) {
+	else if (settings["splitSkip"] && !current.levelCompleted && old.levelCompleted && vars.skip) {
 		vars.skip = false;
 		return true;
 	}
