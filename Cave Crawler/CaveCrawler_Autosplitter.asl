@@ -1,5 +1,5 @@
 
-state("CaveCrawler")
+state("CaveCrawler", "Steam")
 {
 	int  level		: 0x21C9C50, 0x138, 0x108, 0x0, 0x58, 0x20, 0xE0;
 	int  resetLevel		: 0x21C9C50, 0x138, 0x108, 0x0, 0x58, 0x20, 0x50;//pointer
@@ -7,11 +7,18 @@ state("CaveCrawler")
 	bool inLevel		: 0x21C9C50, 0x138, 0x108, 0x0, 0x58, 0x20, 0x48;
 	bool levelCompleted	: 0x21C9C50, 0x138, 0x108, 0x0, 0x58, 0x20, 0xC8;
 }
-
+state("CaveCrawler", "Itch.io")
+{
+	int  level		: 0x21D0B80, 0xF0, 0x108, 0x0, 0x58, 0x20, 0xE0;
+	int  resetLevel		: 0x21D0B80, 0xF0, 0x108, 0x0, 0x58, 0x20, 0x50;
+	int  score		: 0x21D0B80, 0xF0, 0x108, 0x0, 0x58, 0x20, 0xB0;
+	bool inLevel		: 0x21D0B80, 0xF0, 0x108, 0x0, 0x58, 0x20, 0x48;
+	bool levelCompleted	: 0x21D0B80, 0xF0, 0x108, 0x0, 0x58, 0x20, 0xC8;
+}
 
 startup
 {
-	vars.name = "Cave Crawler Autosplitter 1.2";
+	vars.name = "Cave Crawler Autosplitter 1.3";
 
 	vars.timer = new TimerModel { CurrentState = timer };
 	refreshRate = 60;
@@ -48,6 +55,23 @@ startup
 	vars.reset = false;
 	vars.skip = false;
 	print("\n~Running " + vars.name + "~\n");
+}
+
+init
+{
+	// MD5 code by CptBrian.
+    string MD5Hash;
+    using (var md5 = System.Security.Cryptography.MD5.Create())
+        using (var s = File.Open(modules.First().FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            MD5Hash = md5.ComputeHash(s).Select(x => x.ToString("X2")).Aggregate((a, b) => a + b);
+	print("HASH = " + MD5Hash);
+
+	//Itch  Jan18 HASH = 3ACF2F0A58F3650900086EE151119F38
+	//Steam Jan30 HASH = 89FCA12C33E1CB7130FC02A7F9392B25
+	if (MD5Hash == "3ACF2F0A58F3650900086EE151119F38")
+		version = "Itch.io";
+	else
+		version = "Steam";
 }
 
 start
